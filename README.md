@@ -1,3 +1,13 @@
+# rt1_funchook
+
+## build: macos
+
+```sh
+mkdir build-macos
+cmake -B build-macos -G Ninja -DFUNCHOOK_DISASM=capstone -DCMAKE_BUILD_TYPE=Debug .
+ninja -C build-macos
+```
+
 Funchook - an API hook library
 ==============================
 
