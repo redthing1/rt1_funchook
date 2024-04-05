@@ -40,7 +40,7 @@
 #define DLLEXPORT
 #endif
 
-#if defined(__APPLE__) && defined(__clang_major__) && __clang_major__ >= 11
+#if defined(__APPLE__)
 #define SKIP_TESTS_CHANGING_EXE
 #endif
 
