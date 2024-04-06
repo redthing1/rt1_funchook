@@ -8,7 +8,7 @@ jobs:
     name: Tests on Alpine (x86_64)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: x86_64 tests on Alpine
@@ -16,22 +16,34 @@ jobs:
         docker build -f .ci/Dockerfile-alpine-test -t funchook-test .
         docker run --rm funchook-test
 
-  tests_on_macos:
+  tests_on_intel_macos:
     name: Tests on macOS (x86_64)
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: x86_64 tests on macOS
       run: |
         ./.ci/run-cmake-test.sh x86_64-darwin
 
+  tests_on_m1_macos:
+    name: Tests on macOS (M1)
+    continue-on-error: true
+    runs-on: macos-14
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: arm64 tests on macOS
+      run: |
+        ./.ci/run-cmake-test.sh arm64-darwin
+
   tests_on_ubuntu_arm64:
     name: Tests on Ubuntu (aarch64)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - uses: uraimo/run-on-arch-action@v2
@@ -51,7 +63,7 @@ jobs:
     name: Tests on Ubuntu (x86_64 and i686)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Install packages
@@ -69,7 +81,7 @@ jobs:
     name: Tests on Windows (x64 and x86)
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: x64 tests on Windows
@@ -85,7 +97,7 @@ jobs:
     name: Tests on Wine (x64 and x86)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Install packages
