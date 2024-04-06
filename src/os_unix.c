@@ -354,33 +354,94 @@ int funchook_page_unprotect(funchook_t *funchook, funchook_page_t *page)
 }
 
 #if defined(__APPLE__)
+// int funchook_unprotect_begin(funchook_t *funchook, mem_state_t *mstate, void *start, size_t len)
+// {
+//     vm_prot_t prot = VM_PROT_READ | VM_PROT_WRITE;
+//     mach_vm_address_t start_addr = (mach_vm_address_t) start;
+
+//     kern_return_t mprotect_ret = mach_vm_protect(mach_task_self(), start_addr, len, FALSE, prot);
+//     if (mprotect_ret != KERN_SUCCESS) {
+//         funchook_set_error_message(funchook, "Failed to unprotect memory %p (size=%"PRIuPTR", error=%s)",
+//                                    start, len,
+//                                    mach_error_string(mprotect_ret));
+//         return FUNCHOOK_ERROR_MEMORY_FUNCTION;
+//     }
+//     printf("  unprotect memory (darwin) %p (size=%"PRIuPTR", prot=read,write)\n", start, len);
+// }
+
+// int funchook_unprotect_end(funchook_t *funchook, const mem_state_t *mstate)
+// {
+//     vm_prot_t prot = VM_PROT_READ | VM_PROT_EXECUTE;
+//     kern_return_t mprotect_ret = mach_vm_protect(mach_task_self(), (mach_vm_address_t)mstate->addr, mstate->size, FALSE, prot);
+//     if (mprotect_ret != KERN_SUCCESS) {
+//         funchook_set_error_message(funchook, "Failed to protect memory %p (size=%"PRIuPTR", prot=read,exec, error=%s)",
+//                                    mstate->addr, mstate->size,
+//                                    mach_error_string(mprotect_ret));
+//         return FUNCHOOK_ERROR_MEMORY_FUNCTION;
+//     }
+//     printf("  protect memory (darwin) %p (size=%"PRIuPTR", prot=read,exec)\n", mstate->addr, mstate->size);
+//     return 0;
+// }
 int funchook_unprotect_begin(funchook_t *funchook, mem_state_t *mstate, void *start, size_t len)
 {
-    vm_prot_t prot = VM_PROT_READ | VM_PROT_WRITE;
-    mach_vm_address_t start_addr = (mach_vm_address_t) start;
+    static int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+    char errbuf[128];
+    size_t saddr = ROUND_DOWN((size_t)start, page_size);
+    int rv;
 
-    kern_return_t mprotect_ret = mach_vm_protect(mach_task_self(), start_addr, len, FALSE, prot);
-    if (mprotect_ret != KERN_SUCCESS) {
-        funchook_set_error_message(funchook, "Failed to unprotect memory %p (size=%"PRIuPTR", error=%s)",
-                                   start, len,
-                                   mach_error_string(mprotect_ret));
-        return FUNCHOOK_ERROR_MEMORY_FUNCTION;
+    mstate->addr = (void*)saddr;
+    mstate->size = len + (size_t)start - saddr;
+    mstate->size = ROUND_UP(mstate->size, page_size);
+    rv = mprotect(mstate->addr, mstate->size, prot);
+    if (rv == 0) {
+        funchook_log(funchook, "  unprotect memory %p (size=%"PRIuPTR", prot=read,write%s) <- %p (size=%"PRIuPTR")\n",
+                     mstate->addr, mstate->size, (prot & PROT_EXEC) ? ",exec" : "", start, len);
+        return 0;
     }
-    printf("  unprotect memory (darwin) %p (size=%"PRIuPTR", prot=read,write)\n", start, len);
+#if defined(__APPLE__)
+    // try one more time using mach_vm_protect
+    vm_prot_t mach_prot = VM_PROT_READ | VM_PROT_WRITE;
+    mach_vm_address_t start_addr = (mach_vm_address_t) start;
+    kern_return_t mprotect_ret = mach_vm_protect(mach_task_self(), start_addr, len, FALSE, mach_prot);
+    if (mprotect_ret == KERN_SUCCESS) {
+        // printf("  unprotect memory (mach_vm_protect) %p (size=%"PRIuPTR", prot=read,write)\n", start, len);
+        funchook_log(funchook, "  unprotect memory (mach_vm_protect) %p (size=%"PRIuPTR", prot=read,write)\n",
+                        start, len);
+        return 0;
+    } else {
+        printf("  failed to unprotect memory (mach_vm_protect) %p (size=%"PRIuPTR", error=%s)\n", start, len, mach_error_string(mprotect_ret));
+    }
+#endif
+    if (rv == -1 && errno == EACCES && (prot & PROT_EXEC)) {
+        rv = mprotect(mstate->addr, mstate->size, PROT_READ | PROT_WRITE);
+        if (rv == 0) {
+            prot = PROT_READ | PROT_WRITE;
+            funchook_log(funchook, "  unprotect memory %p (size=%"PRIuPTR", prot=read,write) <- %p (size=%"PRIuPTR")\n",
+                         mstate->addr, mstate->size, start, len);
+            return 0;
+        }
+    }
+
+    funchook_set_error_message(funchook, "Failed to unprotect memory %p (size=%"PRIuPTR", prot=read,write%s) <- %p (size=%"PRIuPTR", error=%s)",
+                               mstate->addr, mstate->size, (prot & PROT_EXEC) ? ",exec" : "", start, len,
+                               funchook_strerror(errno, errbuf, sizeof(errbuf)));
+    return FUNCHOOK_ERROR_MEMORY_FUNCTION;
 }
 
 int funchook_unprotect_end(funchook_t *funchook, const mem_state_t *mstate)
 {
-    vm_prot_t prot = VM_PROT_READ | VM_PROT_EXECUTE;
-    kern_return_t mprotect_ret = mach_vm_protect(mach_task_self(), (mach_vm_address_t)mstate->addr, mstate->size, FALSE, prot);
-    if (mprotect_ret != KERN_SUCCESS) {
-        funchook_set_error_message(funchook, "Failed to protect memory %p (size=%"PRIuPTR", prot=read,exec, error=%s)",
-                                   mstate->addr, mstate->size,
-                                   mach_error_string(mprotect_ret));
-        return FUNCHOOK_ERROR_MEMORY_FUNCTION;
+    char errbuf[128];
+    int rv = mprotect(mstate->addr, mstate->size, PROT_READ | PROT_EXEC);
+
+    if (rv == 0) {
+        funchook_log(funchook, "  protect memory %p (size=%"PRIuPTR", prot=read,exec)\n",
+                     mstate->addr, mstate->size);
+        return 0;
     }
-    printf("  protect memory (darwin) %p (size=%"PRIuPTR", prot=read,exec)\n", mstate->addr, mstate->size);
-    return 0;
+    funchook_set_error_message(funchook, "Failed to protect memory %p (size=%"PRIuPTR", prot=read,exec, error=%s)",
+                               mstate->addr, mstate->size,
+                               funchook_strerror(errno, errbuf, sizeof(errbuf)));
+    return FUNCHOOK_ERROR_MEMORY_FUNCTION;
 }
 #else
 int funchook_unprotect_begin(funchook_t *funchook, mem_state_t *mstate, void *start, size_t len)
