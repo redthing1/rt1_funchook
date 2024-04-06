@@ -44,7 +44,6 @@
 #ifdef __APPLE__
 #include <stdlib.h>
 #include <mach/mach.h>
-#include <mach/mach_vm.h>
 #endif
 #include "funchook_internal.h"
 
@@ -353,36 +352,6 @@ int funchook_page_unprotect(funchook_t *funchook, funchook_page_t *page)
     return FUNCHOOK_ERROR_MEMORY_FUNCTION;
 }
 
-#if defined(__APPLE__)
-int funchook_unprotect_begin(funchook_t *funchook, mem_state_t *mstate, void *start, size_t len)
-{
-    vm_prot_t prot = VM_PROT_READ | VM_PROT_WRITE;
-    mach_vm_address_t start_addr = (mach_vm_address_t) start;
-
-    kern_return_t mprotect_ret = mach_vm_protect(mach_task_self(), start_addr, len, FALSE, prot);
-    if (mprotect_ret != KERN_SUCCESS) {
-        funchook_set_error_message(funchook, "Failed to unprotect memory %p (size=%"PRIuPTR", error=%s)",
-                                   start, len,
-                                   mach_error_string(mprotect_ret));
-        return FUNCHOOK_ERROR_MEMORY_FUNCTION;
-    }
-    printf("  unprotect memory (darwin) %p (size=%"PRIuPTR", prot=read,write)\n", start, len);
-}
-
-int funchook_unprotect_end(funchook_t *funchook, const mem_state_t *mstate)
-{
-    vm_prot_t prot = VM_PROT_READ | VM_PROT_EXECUTE;
-    kern_return_t mprotect_ret = mach_vm_protect(mach_task_self(), (mach_vm_address_t)mstate->addr, mstate->size, FALSE, prot);
-    if (mprotect_ret != KERN_SUCCESS) {
-        funchook_set_error_message(funchook, "Failed to protect memory %p (size=%"PRIuPTR", prot=read,exec, error=%s)",
-                                   mstate->addr, mstate->size,
-                                   mach_error_string(mprotect_ret));
-        return FUNCHOOK_ERROR_MEMORY_FUNCTION;
-    }
-    printf("  protect memory (darwin) %p (size=%"PRIuPTR", prot=read,exec)\n", mstate->addr, mstate->size);
-    return 0;
-}
-#else
 int funchook_unprotect_begin(funchook_t *funchook, mem_state_t *mstate, void *start, size_t len)
 {
     static int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
@@ -429,7 +398,6 @@ int funchook_unprotect_end(funchook_t *funchook, const mem_state_t *mstate)
                                funchook_strerror(errno, errbuf, sizeof(errbuf)));
     return FUNCHOOK_ERROR_MEMORY_FUNCTION;
 }
-#endif
 
 void *funchook_resolve_func(funchook_t *funchook, void *func)
 {
