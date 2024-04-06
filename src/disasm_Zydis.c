@@ -32,7 +32,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
-#include "funchook_internal.h"
+#include "funchook/funchook_internal.h"
 #include "disasm.h"
 
 #ifdef CPU_X86_64

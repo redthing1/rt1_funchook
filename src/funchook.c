@@ -49,7 +49,7 @@
 #endif
 #endif
 #include "funchook.h"
-#include "funchook_internal.h"
+#include "funchook/funchook_internal.h"
 #include "disasm.h"
 
 #define FUNCHOOK_MAX_ERROR_MESSAGE_LEN 200

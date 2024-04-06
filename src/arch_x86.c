@@ -34,7 +34,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <limits.h>
-#include "funchook_internal.h"
+#include "funchook/funchook_internal.h"
 #include "disasm.h"
 
 typedef struct {

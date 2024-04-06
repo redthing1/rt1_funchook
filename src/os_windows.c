@@ -33,7 +33,7 @@
 #include <stdio.h>
 #include <windows.h>
 #include <psapi.h>
-#include "funchook_internal.h"
+#include "funchook/funchook_internal.h"
 
 typedef struct page_info {
     struct page_info *next;

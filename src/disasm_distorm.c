@@ -32,7 +32,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include "funchook_internal.h"
+#include "funchook/funchook_internal.h"
 #include "disasm.h"
 
 int funchook_disasm_init(funchook_disasm_t *disasm, funchook_t *funchook, const uint8_t *code, size_t code_size, size_t address)

@@ -45,7 +45,7 @@
 #include <stdlib.h>
 #include <mach/mach.h>
 #endif
-#include "funchook_internal.h"
+#include "funchook/funchook_internal.h"
 
 #if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
 #define MAP_ANONYMOUS MAP_ANON
